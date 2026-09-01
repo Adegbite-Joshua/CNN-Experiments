@@ -1,6 +1,6 @@
 import lightning as L
 from dataset import MnistDataModule
-from model import SimpleCNNModel
+from models.simple_cnn import SimpleCNNModel, logger
 
 dm = MnistDataModule(
     data_dir="./datasets",
@@ -14,6 +14,6 @@ model = SimpleCNNModel(
     num_classes=10
 )
 
-trainer = L.Trainer(accelerator="cpu", devices=1, min_epochs=2, max_epochs=100)
+trainer = L.Trainer(accelerator="cpu", devices=1, min_epochs=2, max_epochs=100, logger=logger)
 
 trainer.fit(model, dm)
