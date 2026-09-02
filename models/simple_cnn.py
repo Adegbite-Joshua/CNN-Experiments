@@ -4,10 +4,15 @@ import lightning as L
 import torchmetrics
 from torchmetrics import Accuracy
 from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.profilers import PyTorchProfiler
 import torchvision
 
 
 logger = TensorBoardLogger("tb_logs", name="simple_cnn")
+profiler = PyTorchProfiler(
+    on_trace_ready=torch.profiler.tensorboard_trace_handler("tb_logs/profiler_simple_cnn"),
+    schedule=torch.profiler.schedule(wait=1, warmup=1, skip_first=10, active=20)
+)
 class SimpleCNNModel(L.LightningModule):
     """Building simple CNN"""
 
