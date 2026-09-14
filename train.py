@@ -7,6 +7,21 @@ from torchvision import transforms
 
 IMAGE_SIZE = 32
 NUM_CLASSES = 10
+MODEL_NAMES = [
+    "simple_cnn",
+    "lenet5",
+    "alexnet",
+    "googlenet",
+    "vgg11",
+    "vgg13",
+    "vgg16",
+    "vgg19",
+    "resnet18",
+    "resnet34",
+    "resnet50",
+    "resnet101",
+    "resnet152",
+]
 
 
 def parse_devices(value):
@@ -20,22 +35,8 @@ def parse_args():
     parser.add_argument(
         "--model",
         default="alexnet",
-        choices=[
-            "simple_cnn",
-            "lenet5",
-            "alexnet",
-            "googlenet",
-            "vgg11",
-            "vgg13",
-            "vgg16",
-            "vgg19",
-            "resnet18",
-            "resnet34",
-            "resnet50",
-            "resnet101",
-            "resnet152",
-        ],
-        help="Model architecture to train.",
+        choices=["all", *MODEL_NAMES],
+        help="Model architecture to train. Use 'all' to train every model.",
     )
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--epochs", type=int, default=100)
@@ -134,29 +135,33 @@ def build_model(model_name, learning_rate):
 def main():
     args = parse_args()
 
-    dm = MnistDataModule(
-        data_dir=args.data_dir,
-        batch_size=args.batch_size,
-        num_workers=args.num_workers,
-        transform=transforms.Compose(
-            [
-                transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-                transforms.ToTensor(),
-            ]
-        ),
+    transform = transforms.Compose(
+        [
+            transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+            transforms.ToTensor(),
+        ]
     )
+    model_names = MODEL_NAMES if args.model == "all" else [args.model]
 
-    model, logger, profiler = build_model(args.model, args.learning_rate)
+    for model_name in model_names:
+        print(f"\nTraining {model_name} for {args.epochs} epoch(s)...")
+        dm = MnistDataModule(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            transform=transform,
+        )
+        model, logger, profiler = build_model(model_name, args.learning_rate)
 
-    trainer = L.Trainer(
-        accelerator=args.accelerator,
-        devices=args.devices,
-        min_epochs=1,
-        max_epochs=args.epochs,
-        logger=logger,
-        profiler=profiler,
-    )
-    trainer.fit(model, dm)
+        trainer = L.Trainer(
+            accelerator=args.accelerator,
+            devices=args.devices,
+            min_epochs=1,
+            max_epochs=args.epochs,
+            logger=logger,
+            profiler=profiler,
+        )
+        trainer.fit(model, dm)
 
 
 if __name__ == "__main__":
