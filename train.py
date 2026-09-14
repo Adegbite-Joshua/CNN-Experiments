@@ -1,25 +1,163 @@
+import argparse
+
 import lightning as L
 from dataset import MnistDataModule
-# from models.simple_cnn import SimpleCNNModel, logger, profiler
-from models.lenet5 import Lenet5Model, logger, profiler
 from torchvision import transforms
 
-dm = MnistDataModule(
-    data_dir="./datasets",
-    batch_size=32,
-    num_workers=1,
-    transform=transforms.Compose([
-    transforms.Resize((32, 32)),
-    transforms.ToTensor()
-])
-)
 
-model = Lenet5Model(
-    input_size=1,
-    hidden_units=100,
-    num_classes=10
-)
+IMAGE_SIZE = 32
+NUM_CLASSES = 10
 
-trainer = L.Trainer(accelerator="cpu", devices=1, min_epochs=2, max_epochs=100, logger=logger, profiler=profiler)
 
-trainer.fit(model, dm)
+def parse_devices(value):
+    if value == "auto":
+        return value
+    return int(value)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Train a CNN on MNIST.")
+    parser.add_argument(
+        "--model",
+        default="alexnet",
+        choices=[
+            "simple_cnn",
+            "lenet5",
+            "alexnet",
+            "googlenet",
+            "vgg11",
+            "vgg13",
+            "vgg16",
+            "vgg19",
+            "resnet18",
+            "resnet34",
+            "resnet50",
+            "resnet101",
+            "resnet152",
+        ],
+        help="Model architecture to train.",
+    )
+    parser.add_argument("--batch-size", type=int, default=32)
+    parser.add_argument("--epochs", type=int, default=100)
+    parser.add_argument(
+        "--accelerator",
+        default="cpu",
+        choices=["cpu", "gpu", "mps", "auto"],
+        help="Lightning accelerator to use.",
+    )
+    parser.add_argument(
+        "--devices",
+        type=parse_devices,
+        default=1,
+        help="Number of devices or 'auto'.",
+    )
+    parser.add_argument("--num-workers", type=int, default=1)
+    parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument("--data-dir", default="./datasets")
+    return parser.parse_args()
+
+
+def build_model(model_name, learning_rate):
+    if model_name == "simple_cnn":
+        from models.simple_cnn import SimpleCNNModel, logger, profiler
+
+        model = SimpleCNNModel(
+            input_size=IMAGE_SIZE * IMAGE_SIZE,
+            hidden_units=100,
+            num_classes=NUM_CLASSES,
+        )
+    elif model_name == "lenet5":
+        from models.lenet5 import Lenet5Model, logger, profiler
+
+        model = Lenet5Model(
+            input_size=IMAGE_SIZE * IMAGE_SIZE,
+            hidden_units=100,
+            num_classes=NUM_CLASSES,
+        )
+    elif model_name == "alexnet":
+        from models.alexnet import AlexNetModel, logger, profiler
+
+        model = AlexNetModel(
+            input_size=1,
+            hidden_units=100,
+            num_classes=NUM_CLASSES,
+            in_channels=1,
+        )
+    elif model_name == "googlenet":
+        from models.googlenet import GoogLeNetModel, logger, profiler
+
+        model = GoogLeNetModel(
+            input_size=1,
+            hidden_units=100,
+            num_classes=NUM_CLASSES,
+            in_channels=1,
+        )
+    elif model_name.startswith("vgg"):
+        from models.vgg import VGGModel, logger, profiler
+
+        model = VGGModel(
+            input_size=1,
+            hidden_units=100,
+            num_classes=NUM_CLASSES,
+            in_channels=1,
+            architecture=model_name,
+        )
+    elif model_name.startswith("resnet"):
+        from models.resnet import (
+            ResNet18,
+            ResNet34,
+            ResNet50,
+            ResNet101,
+            ResNet152,
+            logger,
+            profiler,
+        )
+
+        constructors = {
+            "resnet18": ResNet18,
+            "resnet34": ResNet34,
+            "resnet50": ResNet50,
+            "resnet101": ResNet101,
+            "resnet152": ResNet152,
+        }
+        model = constructors[model_name](
+            img_channels=1,
+            num_classes=NUM_CLASSES,
+            learning_rate=learning_rate,
+        )
+    else:
+        raise ValueError(f"Unsupported model: {model_name}")
+
+    return model, logger, profiler
+
+
+def main():
+    args = parse_args()
+
+    dm = MnistDataModule(
+        data_dir=args.data_dir,
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        transform=transforms.Compose(
+            [
+                transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
+                transforms.ToTensor(),
+            ]
+        ),
+    )
+
+    model, logger, profiler = build_model(args.model, args.learning_rate)
+
+    trainer = L.Trainer(
+        accelerator=args.accelerator,
+        devices=args.devices,
+        min_epochs=1,
+        max_epochs=args.epochs,
+        logger=logger,
+        profiler=profiler,
+    )
+    trainer.fit(model, dm)
+
+
+if __name__ == "__main__":
+    main()
