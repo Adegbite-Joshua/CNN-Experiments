@@ -48,9 +48,6 @@ class SimpleCNNModel(L.LightningModule):
         
         if batch_idx % 100 == 0:
             x = x[:8]
-            print(f"Shape before: {x.shape}")
-            print("\n\n\n\n\n\n\n\n")
-            print(f"Shape after: {x.view(-1,1,28,28).shape}")
             grid = torchvision.utils.make_grid(x)
             self.logger.experiment.add_image("mnist_images", grid, self.global_step)
         return loss
