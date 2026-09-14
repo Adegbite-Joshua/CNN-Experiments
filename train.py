@@ -12,15 +12,15 @@ MODEL_NAMES = [
     "lenet5",
     "alexnet",
     "googlenet",
-    "vgg11",
-    "vgg13",
+    # "vgg11",
+    # "vgg13",
     "vgg16",
-    "vgg19",
-    "resnet18",
-    "resnet34",
+    # "vgg19",
+    # "resnet18",
+    # "resnet34",
     "resnet50",
-    "resnet101",
-    "resnet152",
+    # "resnet101",
+    # "resnet152",
 ]
 
 

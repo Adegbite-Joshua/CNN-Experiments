@@ -3,3 +3,4 @@ torchvision
 lightning
 torchmetrics
 tensorboard
+tensorboard-plugin-profile
