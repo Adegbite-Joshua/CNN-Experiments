@@ -85,5 +85,5 @@ class SimpleCNNModel(L.LightningModule):
         return loss, scores, y
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-2)
         return optimizer
