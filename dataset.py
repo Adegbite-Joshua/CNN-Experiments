@@ -14,11 +14,11 @@ class MnistDataModule(L.LightningDataModule):
         self.transform = transform
         
     def prepare_data(self):
-        datasets.MNIST(self.data_dir, train=True, download=True)
-        datasets.MNIST(self.data_dir, train=False, download=True)
+        datasets.CIFAR10(self.data_dir, train=True, download=True)
+        datasets.CIFAR10(self.data_dir, train=False, download=True)
         
     def setup(self, stage=None):
-        entire_dataset = datasets.MNIST(
+        entire_dataset = datasets.CIFAR10(
             self.data_dir,
             train=True,
             download=False,
@@ -26,7 +26,7 @@ class MnistDataModule(L.LightningDataModule):
         )
         self.train_ds, self.val_ds = random_split(entire_dataset, [50000,10000])
         
-        self.test_ds = datasets.MNIST(
+        self.test_ds = datasets.CIFAR10(
             self.data_dir,
             train=False,
             download=False,
