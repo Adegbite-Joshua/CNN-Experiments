@@ -4,6 +4,9 @@ from torchvision import datasets
 from torchvision import transforms
 from torch.utils.data import DataLoader, random_split
 
+DATASET_NAME = "cifar10"
+
+
 class MnistDataModule(L.LightningDataModule):
     def __init__(self, data_dir, batch_size, num_workers, transform=transforms.ToTensor()):
         super().__init__()

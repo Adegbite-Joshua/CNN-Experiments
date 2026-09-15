@@ -4,7 +4,7 @@ from pathlib import Path
 import time
 
 import lightning as L
-from dataset import MnistDataModule
+from dataset import DATASET_NAME, MnistDataModule
 from torchvision import transforms
 
 
@@ -34,7 +34,7 @@ def parse_devices(value):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Train a CNN on MNIST.")
+    parser = argparse.ArgumentParser(description=f"Train a CNN on {DATASET_NAME.upper()}.")
     parser.add_argument(
         "--model",
         default="alexnet",
@@ -60,7 +60,7 @@ def parse_args():
     parser.add_argument("--data-dir", default="./datasets")
     parser.add_argument(
         "--results-file",
-        default="results.md",
+        default=None,
         help="Markdown file where the model comparison table will be written.",
     )
     return parser.parse_args()
@@ -199,6 +199,11 @@ def markdown_table(headers, rows):
     return "\n".join(table)
 
 
+def default_results_file(args):
+    dataset_name = DATASET_NAME.lower().replace(" ", "_")
+    return f"results_{dataset_name}_batch{args.batch_size}_epochs{args.epochs}.md"
+
+
 def write_results_markdown(results_file, args, records, started_at, finished_at):
     results_path = Path(results_file)
     results_path.parent.mkdir(parents=True, exist_ok=True)
@@ -250,7 +255,7 @@ def write_results_markdown(results_file, args, records, started_at, finished_at)
         markdown_table(
             ["Setting", "Value"],
             [
-                ["Dataset", "MNIST"],
+                ["Dataset", DATASET_NAME.upper()],
                 ["Image size", f"{IMAGE_SIZE}x{IMAGE_SIZE}"],
                 ["Classes", NUM_CLASSES],
                 ["Models requested", args.model],
@@ -341,8 +346,9 @@ def main():
         )
 
     finished_at = datetime.now()
-    write_results_markdown(args.results_file, args, records, started_at, finished_at)
-    print(f"\nSaved results summary to {args.results_file}")
+    results_file = args.results_file or default_results_file(args)
+    write_results_markdown(results_file, args, records, started_at, finished_at)
+    print(f"\nSaved results summary to {results_file}")
 
 
 if __name__ == "__main__":
