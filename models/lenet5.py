@@ -19,7 +19,7 @@ profiler = PyTorchProfiler(
 class Lenet5Model(L.LightningModule):
     """Building LeNet CNN"""
 
-    def __init__(self, input_size, hidden_units, num_classes):
+    def __init__(self, input_size, hidden_units, num_classes, in_channels=1):
         super().__init__()
         self.input_size = input_size
         self.hidden_units = hidden_units
@@ -31,7 +31,7 @@ class Lenet5Model(L.LightningModule):
         self.accuracy = Accuracy(task="multiclass", num_classes=num_classes)
 
         self.layers = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, stride=1, padding=0),
+            nn.Conv2d(in_channels=in_channels, out_channels=6, kernel_size=5, stride=1, padding=0),
             self.relu,
             self.pool,
             nn.Conv2d(in_channels=6, out_channels=16, kernel_size=5, stride=1, padding=0),

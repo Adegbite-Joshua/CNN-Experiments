@@ -4,12 +4,16 @@ from pathlib import Path
 import time
 
 import lightning as L
-from dataset import DATASET_NAME, MnistDataModule
+from dataset import (
+    DEFAULT_DATASET_NAME,
+    ImageClassificationDataModule,
+    dataset_info,
+    dataset_names,
+)
 from torchvision import transforms
 
 
 IMAGE_SIZE = 32
-NUM_CLASSES = 10
 MODEL_NAMES = [
     "simple_cnn",
     "lenet5",
@@ -34,7 +38,7 @@ def parse_devices(value):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description=f"Train a CNN on {DATASET_NAME.upper()}.")
+    parser = argparse.ArgumentParser(description="Train a CNN on an image dataset.")
     parser.add_argument(
         "--model",
         default="alexnet",
@@ -57,6 +61,12 @@ def parse_args():
     )
     parser.add_argument("--num-workers", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=1e-3)
+    parser.add_argument(
+        "--dataset",
+        default=DEFAULT_DATASET_NAME,
+        choices=dataset_names(),
+        help="Dataset to train on.",
+    )
     parser.add_argument("--data-dir", default="./datasets")
     parser.add_argument(
         "--results-file",
@@ -66,22 +76,23 @@ def parse_args():
     return parser.parse_args()
 
 
-def build_model(model_name, learning_rate):
+def build_model(model_name, learning_rate, input_channels, num_classes):
     if model_name == "simple_cnn":
         from models.simple_cnn import SimpleCNNModel, logger, profiler
 
         model = SimpleCNNModel(
-            input_size=IMAGE_SIZE * IMAGE_SIZE,
+            input_size=input_channels * IMAGE_SIZE * IMAGE_SIZE,
             hidden_units=100,
-            num_classes=NUM_CLASSES,
+            num_classes=num_classes,
         )
     elif model_name == "lenet5":
         from models.lenet5 import Lenet5Model, logger, profiler
 
         model = Lenet5Model(
-            input_size=IMAGE_SIZE * IMAGE_SIZE,
+            input_size=input_channels * IMAGE_SIZE * IMAGE_SIZE,
             hidden_units=100,
-            num_classes=NUM_CLASSES,
+            num_classes=num_classes,
+            in_channels=input_channels,
         )
     elif model_name == "alexnet":
         from models.alexnet import AlexNetModel, logger, profiler
@@ -89,8 +100,8 @@ def build_model(model_name, learning_rate):
         model = AlexNetModel(
             input_size=1,
             hidden_units=100,
-            num_classes=NUM_CLASSES,
-            in_channels=1,
+            num_classes=num_classes,
+            in_channels=input_channels,
         )
     elif model_name == "googlenet":
         from models.googlenet import GoogLeNetModel, logger, profiler
@@ -98,8 +109,8 @@ def build_model(model_name, learning_rate):
         model = GoogLeNetModel(
             input_size=1,
             hidden_units=100,
-            num_classes=NUM_CLASSES,
-            in_channels=1,
+            num_classes=num_classes,
+            in_channels=input_channels,
         )
     elif model_name.startswith("vgg"):
         from models.vgg import VGGModel, logger, profiler
@@ -107,8 +118,8 @@ def build_model(model_name, learning_rate):
         model = VGGModel(
             input_size=1,
             hidden_units=100,
-            num_classes=NUM_CLASSES,
-            in_channels=1,
+            num_classes=num_classes,
+            in_channels=input_channels,
             architecture=model_name,
         )
     elif model_name.startswith("resnet"):
@@ -130,8 +141,8 @@ def build_model(model_name, learning_rate):
             "resnet152": ResNet152,
         }
         model = constructors[model_name](
-            img_channels=1,
-            num_classes=NUM_CLASSES,
+            img_channels=input_channels,
+            num_classes=num_classes,
             learning_rate=learning_rate,
         )
     else:
@@ -200,11 +211,11 @@ def markdown_table(headers, rows):
 
 
 def default_results_file(args):
-    dataset_name = DATASET_NAME.lower().replace(" ", "_")
+    dataset_name = args.dataset.lower().replace(" ", "_")
     return f"results_{dataset_name}_batch{args.batch_size}_epochs{args.epochs}.md"
 
 
-def write_results_markdown(results_file, args, records, started_at, finished_at):
+def write_results_markdown(results_file, args, records, started_at, finished_at, data_info):
     results_path = Path(results_file)
     results_path.parent.mkdir(parents=True, exist_ok=True)
     headers = [
@@ -255,9 +266,10 @@ def write_results_markdown(results_file, args, records, started_at, finished_at)
         markdown_table(
             ["Setting", "Value"],
             [
-                ["Dataset", DATASET_NAME.upper()],
+                ["Dataset", data_info["display_name"]],
                 ["Image size", f"{IMAGE_SIZE}x{IMAGE_SIZE}"],
-                ["Classes", NUM_CLASSES],
+                ["Channels", data_info["channels"]],
+                ["Classes", data_info["num_classes"]],
                 ["Models requested", args.model],
                 ["Batch size", args.batch_size],
                 ["Epochs requested", args.epochs],
@@ -285,6 +297,7 @@ def write_results_markdown(results_file, args, records, started_at, finished_at)
 
 def main():
     args = parse_args()
+    data_info = dataset_info(args.dataset)
 
     transform = transforms.Compose(
         [
@@ -298,13 +311,19 @@ def main():
 
     for model_name in model_names:
         print(f"\nTraining {model_name} for {args.epochs} epoch(s)...")
-        dm = MnistDataModule(
+        dm = ImageClassificationDataModule(
+            dataset_name=args.dataset,
             data_dir=args.data_dir,
             batch_size=args.batch_size,
             num_workers=args.num_workers,
             transform=transform,
         )
-        model, logger, profiler = build_model(model_name, args.learning_rate)
+        model, logger, profiler = build_model(
+            model_name,
+            args.learning_rate,
+            input_channels=data_info["channels"],
+            num_classes=data_info["num_classes"],
+        )
         total_params, trainable_params = count_parameters(model)
         size_mb = model_size_mb(model)
 
@@ -347,7 +366,7 @@ def main():
 
     finished_at = datetime.now()
     results_file = args.results_file or default_results_file(args)
-    write_results_markdown(results_file, args, records, started_at, finished_at)
+    write_results_markdown(results_file, args, records, started_at, finished_at, data_info)
     print(f"\nSaved results summary to {results_file}")
 
 
